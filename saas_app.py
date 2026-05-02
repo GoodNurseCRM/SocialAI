@@ -1164,6 +1164,34 @@ def render_floating_agent():
   }}
   win.lexSend = lexSend;
 
+  // Attach click events via JS (Streamlit strips inline onclick attributes)
+  function attachLexEvents() {{
+    const orb = doc.querySelector('.lex-orb-wrap');
+    const closeBtn = doc.querySelector('.lex-x');
+    const sendBtn  = doc.querySelector('.lex-snd');
+    const inp      = doc.getElementById('lex-inp');
+    if (orb && !orb._lexBound) {{
+      orb.addEventListener('click', lexToggle);
+      orb._lexBound = true;
+    }}
+    if (closeBtn && !closeBtn._lexBound) {{
+      closeBtn.addEventListener('click', lexToggle);
+      closeBtn._lexBound = true;
+    }}
+    if (sendBtn && !sendBtn._lexBound) {{
+      sendBtn.addEventListener('click', lexSend);
+      sendBtn._lexBound = true;
+    }}
+    if (inp && !inp._lexBound) {{
+      inp.addEventListener('keydown', function(e){{ if(e.key==='Enter') lexSend(); }});
+      inp._lexBound = true;
+    }}
+  }}
+  // Keep trying until elements are in DOM
+  const bindTimer = setInterval(function(){{
+    if (doc.querySelector('.lex-orb-wrap')) {{ attachLexEvents(); clearInterval(bindTimer); }}
+  }}, 100);
+
   // Watch for tab changes and update context label
   let lastHref = win.location.href;
   setInterval(function(){{
