@@ -1790,11 +1790,14 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         from saas.platforms.meta import MetaAPI
         auth_url = MetaAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=uid)
         lbl = "Connect Facebook + Instagram" if pid == "facebook" else "Connect via Facebook"
-        st.markdown(
-            f'<a href="{auth_url}" target="_top" class="plat-oauth-btn"'
-            f' style="background:#1877F2;">{pdef.icon} {lbl}</a>',
-            unsafe_allow_html=True,
-        )
+        st.components.v1.html(f"""
+        <a href="{auth_url}"
+           onclick="window.top.location.href='{auth_url}';return false;"
+           style="display:block;background:#1877F2;color:white;padding:10px 0;
+                  border-radius:10px;font-weight:700;font-size:13px;
+                  text-decoration:none;text-align:center;cursor:pointer;">
+           {pdef.icon} {lbl}
+        </a>""", height=48)
 
     elif pid == "linkedin":
         if not os.environ.get("LINKEDIN_CLIENT_ID"):
@@ -1812,11 +1815,14 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         redirect_uri = f"{_base_url()}/?tab=platforms&oauth_callback=linkedin"
         from saas.platforms.linkedin_api import LinkedInAPI
         auth_url = LinkedInAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=uid)
-        st.markdown(
-            f'<a href="{auth_url}" target="_top" class="plat-oauth-btn"'
-            f' style="background:#0A66C2;">💼 Connect LinkedIn</a>',
-            unsafe_allow_html=True,
-        )
+        st.components.v1.html(f"""
+        <a href="{auth_url}"
+           onclick="window.top.location.href='{auth_url}';return false;"
+           style="display:block;background:#0A66C2;color:white;padding:10px 0;
+                  border-radius:10px;font-weight:700;font-size:13px;
+                  text-decoration:none;text-align:center;cursor:pointer;">
+           💼 Connect LinkedIn
+        </a>""", height=48)
 
     elif pid == "tiktok":
         if not os.environ.get("TIKTOK_CLIENT_KEY"):
@@ -1837,11 +1843,14 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         st.session_state["tiktok_pkce"] = verifier
         from saas.platforms.tiktok_api import TikTokAPI
         auth_url = TikTokAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=uid)
-        st.markdown(
-            f'<a href="{auth_url}" target="_top" class="plat-oauth-btn"'
-            f' style="background:#000;">🎵 Connect TikTok</a>',
-            unsafe_allow_html=True,
-        )
+        st.components.v1.html(f"""
+        <a href="{auth_url}"
+           onclick="window.top.location.href='{auth_url}';return false;"
+           style="display:block;background:#000;color:white;padding:10px 0;
+                  border-radius:10px;font-weight:700;font-size:13px;
+                  text-decoration:none;text-align:center;cursor:pointer;">
+           🎵 Connect TikTok
+        </a>""", height=48)
 
     elif pid == "twitter":
         if not os.environ.get("TWITTER_CLIENT_ID"):
@@ -1861,11 +1870,14 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         verifier, challenge = TwitterAPI.generate_pkce()
         st.session_state["twitter_pkce"] = verifier
         auth_url = TwitterAPI.get_auth_url(redirect_uri, pdef.oauth_scope, uid + ":twitter", challenge)
-        st.markdown(
-            f'<a href="{auth_url}" target="_top" class="plat-oauth-btn"'
-            f' style="background:#1DA1F2;">🐦 Connect Twitter / X</a>',
-            unsafe_allow_html=True,
-        )
+        st.components.v1.html(f"""
+        <a href="{auth_url}"
+           onclick="window.top.location.href='{auth_url}';return false;"
+           style="display:block;background:#1DA1F2;color:white;padding:10px 0;
+                  border-radius:10px;font-weight:700;font-size:13px;
+                  text-decoration:none;text-align:center;cursor:pointer;">
+           🐦 Connect Twitter / X
+        </a>""", height=48)
 
 
 # ── COMPOSE POST ───────────────────────────────────────────────────────────────
