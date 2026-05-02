@@ -22,6 +22,22 @@ def _base_url() -> str:
     """Return the app base URL — production or localhost."""
     return os.environ.get("APP_BASE_URL", "http://localhost:8502").rstrip("/")
 
+def _oauth_button(label: str, url: str, bg: str) -> None:
+    """Render a clickable OAuth button that navigates the top-level window."""
+    from html import escape
+    safe = escape(url)  # & → &amp; so href parses correctly
+    st.components.v1.html(f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:4px 0;background:transparent;">
+<a href="{safe}" target="_top"
+   style="display:block;background:{bg};color:#fff;padding:11px 0;
+          border-radius:10px;font-weight:700;font-size:13px;
+          text-decoration:none;text-align:center;cursor:pointer;
+          font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  {label}
+</a>
+</body></html>""", height=50)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # CSS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1790,14 +1806,7 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         from saas.platforms.meta import MetaAPI
         auth_url = MetaAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=uid)
         lbl = "Connect Facebook + Instagram" if pid == "facebook" else "Connect via Facebook"
-        st.components.v1.html(f"""
-        <a href="{auth_url}"
-           onclick="window.top.location.href='{auth_url}';return false;"
-           style="display:block;background:#1877F2;color:white;padding:10px 0;
-                  border-radius:10px;font-weight:700;font-size:13px;
-                  text-decoration:none;text-align:center;cursor:pointer;">
-           {pdef.icon} {lbl}
-        </a>""", height=48)
+        _oauth_button(f"{pdef.icon} {lbl}", auth_url, "#1877F2")
 
     elif pid == "linkedin":
         if not os.environ.get("LINKEDIN_CLIENT_ID"):
@@ -1815,14 +1824,7 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         redirect_uri = f"{_base_url()}/?tab=platforms&oauth_callback=linkedin"
         from saas.platforms.linkedin_api import LinkedInAPI
         auth_url = LinkedInAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=uid)
-        st.components.v1.html(f"""
-        <a href="{auth_url}"
-           onclick="window.top.location.href='{auth_url}';return false;"
-           style="display:block;background:#0A66C2;color:white;padding:10px 0;
-                  border-radius:10px;font-weight:700;font-size:13px;
-                  text-decoration:none;text-align:center;cursor:pointer;">
-           💼 Connect LinkedIn
-        </a>""", height=48)
+        _oauth_button("💼 Connect LinkedIn", auth_url, "#0A66C2")
 
     elif pid == "tiktok":
         if not os.environ.get("TIKTOK_CLIENT_KEY"):
@@ -1843,14 +1845,7 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         st.session_state["tiktok_pkce"] = verifier
         from saas.platforms.tiktok_api import TikTokAPI
         auth_url = TikTokAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=uid)
-        st.components.v1.html(f"""
-        <a href="{auth_url}"
-           onclick="window.top.location.href='{auth_url}';return false;"
-           style="display:block;background:#000;color:white;padding:10px 0;
-                  border-radius:10px;font-weight:700;font-size:13px;
-                  text-decoration:none;text-align:center;cursor:pointer;">
-           🎵 Connect TikTok
-        </a>""", height=48)
+        _oauth_button("🎵 Connect TikTok", auth_url, "#000000")
 
     elif pid == "twitter":
         if not os.environ.get("TWITTER_CLIENT_ID"):
@@ -1870,14 +1865,7 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         verifier, challenge = TwitterAPI.generate_pkce()
         st.session_state["twitter_pkce"] = verifier
         auth_url = TwitterAPI.get_auth_url(redirect_uri, pdef.oauth_scope, uid + ":twitter", challenge)
-        st.components.v1.html(f"""
-        <a href="{auth_url}"
-           onclick="window.top.location.href='{auth_url}';return false;"
-           style="display:block;background:#1DA1F2;color:white;padding:10px 0;
-                  border-radius:10px;font-weight:700;font-size:13px;
-                  text-decoration:none;text-align:center;cursor:pointer;">
-           🐦 Connect Twitter / X
-        </a>""", height=48)
+        _oauth_button("🐦 Connect Twitter / X", auth_url, "#1DA1F2")
 
 
 # ── COMPOSE POST ───────────────────────────────────────────────────────────────
