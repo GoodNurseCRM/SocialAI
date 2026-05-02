@@ -23,13 +23,19 @@ def _base_url() -> str:
     return os.environ.get("APP_BASE_URL", "http://localhost:8502").rstrip("/")
 
 def _oauth_button(label: str, url: str, bg: str) -> None:
-    """Render a clickable OAuth button that navigates the top-level window."""
+    """Render an OAuth button that opens the auth URL in a new tab.
+
+    Streamlit's app iframe sandbox lacks `allow-top-navigation`, so we cannot
+    redirect the parent window. It does include `allow-popups-to-escape-sandbox`,
+    so a `target="_blank"` link opens a fresh top-level tab where Facebook's
+    OAuth screen can render.
+    """
     from html import escape
-    safe = escape(url)  # & → &amp; so href parses correctly
+    safe = escape(url)
     st.components.v1.html(f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:4px 0;background:transparent;">
-<a href="{safe}" target="_top"
+<a href="{safe}" target="_blank" rel="noopener"
    style="display:block;background:{bg};color:#fff;padding:11px 0;
           border-radius:10px;font-weight:700;font-size:13px;
           text-decoration:none;text-align:center;cursor:pointer;
@@ -898,13 +904,18 @@ for k, v in {
         st.session_state[k] = v
 
 # Restore session from URL token if session_state lost (e.g. nav via <a href>)
+# Falls back to OAuth `state` param so the new-tab callback (target="_blank")
+# can re-authenticate using the session token we carried through Meta.
 if st.session_state.user is None:
-    _tok = st.query_params.get("s", "")
+    _tok = st.query_params.get("s", "") or (
+        st.query_params.get("state", "") if st.query_params.get("oauth_callback") else ""
+    )
     if _tok:
         _restored = db.get_session(_tok)
         if _restored:
             st.session_state.user = _restored
             st.session_state.session_token = _tok
+            st.query_params["s"] = _tok
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1785,6 +1796,8 @@ def _process_twitter_callback(uid, code):
 
 def _render_platform_connect(uid, pid, pdef, is_admin):
     """Render the OAuth connect button (or admin setup guide) for a platform."""
+    # Pass session token as OAuth state so the new-tab callback can re-auth
+    state_tok = st.session_state.get("session_token") or ""
     if pid in ("facebook", "instagram"):
         app_id  = os.environ.get("META_APP_ID", "")
         app_sec = os.environ.get("META_APP_SECRET", "")
@@ -1804,7 +1817,7 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
             st.caption("Connects automatically with Facebook")
         redirect_uri = f"{_base_url()}/?tab=platforms&oauth_callback=meta"
         from saas.platforms.meta import MetaAPI
-        auth_url = MetaAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=uid)
+        auth_url = MetaAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=state_tok)
         lbl = "Connect Facebook + Instagram" if pid == "facebook" else "Connect via Facebook"
         _oauth_button(f"{pdef.icon} {lbl}", auth_url, "#1877F2")
 
@@ -1823,7 +1836,7 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
             return
         redirect_uri = f"{_base_url()}/?tab=platforms&oauth_callback=linkedin"
         from saas.platforms.linkedin_api import LinkedInAPI
-        auth_url = LinkedInAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=uid)
+        auth_url = LinkedInAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=state_tok)
         _oauth_button("💼 Connect LinkedIn", auth_url, "#0A66C2")
 
     elif pid == "tiktok":
@@ -1844,7 +1857,7 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         verifier = _sec.token_urlsafe(43)
         st.session_state["tiktok_pkce"] = verifier
         from saas.platforms.tiktok_api import TikTokAPI
-        auth_url = TikTokAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=uid)
+        auth_url = TikTokAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=state_tok)
         _oauth_button("🎵 Connect TikTok", auth_url, "#000000")
 
     elif pid == "twitter":
@@ -1864,7 +1877,7 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         from saas.platforms.twitter_api import TwitterAPI
         verifier, challenge = TwitterAPI.generate_pkce()
         st.session_state["twitter_pkce"] = verifier
-        auth_url = TwitterAPI.get_auth_url(redirect_uri, pdef.oauth_scope, uid + ":twitter", challenge)
+        auth_url = TwitterAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state_tok, challenge)
         _oauth_button("🐦 Connect Twitter / X", auth_url, "#1DA1F2")
 
 
