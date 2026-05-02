@@ -60,6 +60,7 @@ section[data-testid="stMain"] .block-container { padding: 0 !important; }
   border-bottom: 1px solid rgba(124,58,237,0.25);
   padding: 12px 28px;
   display: flex; align-items: center; justify-content: space-between;
+  position: relative; z-index: 100;
 }
 
 /* Logo */
@@ -1385,8 +1386,9 @@ def render_topbar():
             </div>
             <div class="sa-user-chevron">▾</div>
             <div class="sa-dropdown">
-              <a class="sa-dd-item" href="?tab=settings{s_param}" target="_self">⚙️ &nbsp;Settings</a>
               <a class="sa-dd-item" href="?tab=settings{s_param}" target="_self">👤 &nbsp;Profile</a>
+              <a class="sa-dd-item" href="?tab=settings&section=subscription{s_param}" target="_self">💳 &nbsp;Subscription</a>
+              <a class="sa-dd-item" href="?tab=settings{s_param}" target="_self">⚙️ &nbsp;Settings</a>
               <div class="sa-dd-divider"></div>
               <a class="sa-dd-item sa-dd-logout" href="?action=logout" target="_self">🚪 &nbsp;Sign out</a>
             </div>
