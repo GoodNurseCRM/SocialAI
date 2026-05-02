@@ -18,6 +18,10 @@ st.set_page_config(
 import saas.db as db
 from saas.config import TIERS, PLATFORMS
 
+def _base_url() -> str:
+    """Return the app base URL — production or localhost."""
+    return os.environ.get("APP_BASE_URL", "http://localhost:8502").rstrip("/")
+
 # ══════════════════════════════════════════════════════════════════════════════
 # CSS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1662,7 +1666,7 @@ def _handle_oauth_callback(uid, cb, code):
 
 
 def _process_meta_callback(uid, code):
-    redirect_uri = "http://localhost:8502/?tab=platforms&oauth_callback=meta"
+    redirect_uri = f"{_base_url()}/?tab=platforms&oauth_callback=meta"
     from saas.platforms.meta import MetaAPI
     tokens       = MetaAPI.exchange_code(code, redirect_uri)
     access_token = tokens["access_token"]
@@ -1703,7 +1707,7 @@ def _process_meta_callback(uid, code):
 
 
 def _process_linkedin_callback(uid, code):
-    redirect_uri = "http://localhost:8502/?tab=platforms&oauth_callback=linkedin"
+    redirect_uri = f"{_base_url()}/?tab=platforms&oauth_callback=linkedin"
     from saas.platforms.linkedin_api import LinkedInAPI
     tokens  = LinkedInAPI.exchange_code(code, redirect_uri)
     api     = LinkedInAPI(access_token=tokens["access_token"])
@@ -1728,7 +1732,7 @@ def _process_linkedin_callback(uid, code):
 
 
 def _process_tiktok_callback(uid, code):
-    redirect_uri   = "http://localhost:8502/?tab=platforms&oauth_callback=tiktok"
+    redirect_uri   = f"{_base_url()}/?tab=platforms&oauth_callback=tiktok"
     from saas.platforms.tiktok_api import TikTokAPI
     verifier_saved = st.session_state.get("tiktok_pkce", "")
     tokens = TikTokAPI.exchange_code(code, redirect_uri, verifier_saved)
@@ -1746,7 +1750,7 @@ def _process_tiktok_callback(uid, code):
 
 
 def _process_twitter_callback(uid, code):
-    redirect_uri = "http://localhost:8502/?tab=platforms&oauth_callback=twitter"
+    redirect_uri = f"{_base_url()}/?tab=platforms&oauth_callback=twitter"
     from saas.platforms.twitter_api import TwitterAPI
     verifier = st.session_state.get("twitter_pkce", "")
     tokens   = TwitterAPI.exchange_code(code, redirect_uri, verifier)
@@ -1771,17 +1775,18 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         if not app_id or not app_sec:
             if is_admin:
                 with st.expander("⚙️ Setup required"):
-                    st.markdown("""**Enable Meta (Facebook + Instagram):**
+                    _meta_uri = f"{_base_url()}/?tab=platforms&oauth_callback=meta"
+                    st.markdown(f"""**Enable Meta (Facebook + Instagram):**
 1. Go to [developers.facebook.com](https://developers.facebook.com) → Create App → Business
 2. Add **Facebook Login** + **Instagram Basic Display**
-3. Set redirect URI: `http://localhost:8502/?tab=platforms&oauth_callback=meta`
+3. Set redirect URI: `{_meta_uri}`
 4. Add `META_APP_ID` and `META_APP_SECRET` to `.env`""")
             else:
                 st.caption("Contact admin to enable this platform")
             return
         if pid == "instagram":
             st.caption("Connects automatically with Facebook")
-        redirect_uri = "http://localhost:8502/?tab=platforms&oauth_callback=meta"
+        redirect_uri = f"{_base_url()}/?tab=platforms&oauth_callback=meta"
         from saas.platforms.meta import MetaAPI
         auth_url = MetaAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=uid)
         lbl = "Connect Facebook + Instagram" if pid == "facebook" else "Connect via Facebook"
@@ -1795,15 +1800,16 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         if not os.environ.get("LINKEDIN_CLIENT_ID"):
             if is_admin:
                 with st.expander("⚙️ Setup required"):
-                    st.markdown("""**Enable LinkedIn:**
+                    _li_uri = f"{_base_url()}/?tab=platforms&oauth_callback=linkedin"
+                    st.markdown(f"""**Enable LinkedIn:**
 1. Go to [linkedin.com/developers](https://www.linkedin.com/developers/apps) → Create App
 2. Add **Share on LinkedIn** + **Sign In with LinkedIn**
-3. Set redirect URI: `http://localhost:8502/?tab=platforms&oauth_callback=linkedin`
+3. Set redirect URI: `{_li_uri}`
 4. Add `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET` to `.env`""")
             else:
                 st.caption("Contact admin to enable this platform")
             return
-        redirect_uri = "http://localhost:8502/?tab=platforms&oauth_callback=linkedin"
+        redirect_uri = f"{_base_url()}/?tab=platforms&oauth_callback=linkedin"
         from saas.platforms.linkedin_api import LinkedInAPI
         auth_url = LinkedInAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=uid)
         st.markdown(
@@ -1816,16 +1822,17 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         if not os.environ.get("TIKTOK_CLIENT_KEY"):
             if is_admin:
                 with st.expander("⚙️ Setup required"):
-                    st.markdown("""**Enable TikTok:**
+                    _tt_uri = f"{_base_url()}/?tab=platforms&oauth_callback=tiktok"
+                    st.markdown(f"""**Enable TikTok:**
 1. Go to [developers.tiktok.com](https://developers.tiktok.com) → Create App
 2. Add **Login Kit** + **Content Posting API**
-3. Set redirect URI: `http://localhost:8502/?tab=platforms&oauth_callback=tiktok`
+3. Set redirect URI: `{_tt_uri}`
 4. Add `TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET` to `.env`""")
             else:
                 st.caption("Contact admin to enable this platform")
             return
         import secrets as _sec, hashlib as _hl
-        redirect_uri = "http://localhost:8502/?tab=platforms&oauth_callback=tiktok"
+        redirect_uri = f"{_base_url()}/?tab=platforms&oauth_callback=tiktok"
         verifier = _sec.token_urlsafe(43)
         st.session_state["tiktok_pkce"] = verifier
         from saas.platforms.tiktok_api import TikTokAPI
@@ -1840,15 +1847,16 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         if not os.environ.get("TWITTER_CLIENT_ID"):
             if is_admin:
                 with st.expander("⚙️ Setup required"):
-                    st.markdown("""**Enable Twitter / X:**
+                    _tw_uri = f"{_base_url()}/?tab=platforms&oauth_callback=twitter"
+                    st.markdown(f"""**Enable Twitter / X:**
 1. Go to [developer.twitter.com](https://developer.twitter.com) → Create Project + App
 2. Enable **OAuth 2.0** with PKCE
-3. Set redirect URI: `http://localhost:8502/?tab=platforms&oauth_callback=twitter`
+3. Set redirect URI: `{_tw_uri}`
 4. Add `TWITTER_CLIENT_ID` and `TWITTER_CLIENT_SECRET` to `.env`""")
             else:
                 st.caption("Contact admin to enable this platform")
             return
-        redirect_uri = "http://localhost:8502/?tab=platforms&oauth_callback=twitter"
+        redirect_uri = f"{_base_url()}/?tab=platforms&oauth_callback=twitter"
         from saas.platforms.twitter_api import TwitterAPI
         verifier, challenge = TwitterAPI.generate_pkce()
         st.session_state["twitter_pkce"] = verifier
