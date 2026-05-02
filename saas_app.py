@@ -1,5 +1,5 @@
 """
-SocialAI — Multi-tenant SaaS Social Media Manager
+AdFlow AI — Multi-tenant SaaS Marketing Agent
 Entry point: streamlit run saas_app.py --server.port 8502
 """
 import streamlit as st
@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 st.set_page_config(
-    page_title="SocialAI — Social Media Manager",
+    page_title="AdFlow AI — AI-Powered Ad Growth",
     page_icon="🚀",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -1251,9 +1251,9 @@ def render_auth():
     with col:
         st.markdown(f"""
         <div class="auth-wrap">
-          <div class="auth-logo">🚀</div>
-          <div class="auth-title">SocialAI</div>
-          <div class="auth-sub">Your AI-powered social media manager</div>
+          <div class="auth-logo">⚡</div>
+          <div class="auth-title">AdFlow AI</div>
+          <div class="auth-sub">Your AI-powered ad growth platform</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1298,7 +1298,7 @@ def render_auth():
                     else:
                         st.error("Incorrect email or password.")
 
-            st.markdown("New to SocialAI? [Create a free account](?auth=register)")
+            st.markdown("New to AdFlow AI? [Create a free account](?auth=register)")
 
             # Demo login shortcut (remove in production)
             st.markdown("---")
@@ -1354,16 +1354,22 @@ def render_topbar():
           <stop offset="0%" stop-color="#A78BFA"/>
           <stop offset="100%" stop-color="#06B6D4"/>
         </linearGradient>
+        <linearGradient id="lg2" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" stop-color="#7C3AED"/>
+          <stop offset="100%" stop-color="#06B6D4"/>
+        </linearGradient>
       </defs>
-      <polygon points="18,2 32,10 32,26 18,34 4,26 4,10" fill="none" stroke="url(#lg1)" stroke-width="1.5" opacity="0.7"/>
-      <circle cx="18" cy="11" r="2.5" fill="url(#lg1)"/>
-      <circle cx="10" cy="22" r="2.5" fill="url(#lg1)"/>
-      <circle cx="26" cy="22" r="2.5" fill="url(#lg1)"/>
-      <line x1="18" y1="11" x2="10" y2="22" stroke="url(#lg1)" stroke-width="1.5" opacity="0.6"/>
-      <line x1="18" y1="11" x2="26" y2="22" stroke="url(#lg1)" stroke-width="1.5" opacity="0.6"/>
-      <line x1="10" y1="22" x2="26" y2="22" stroke="url(#lg1)" stroke-width="1.5" opacity="0.6"/>
-      <circle cx="18" cy="18" r="3.5" fill="url(#lg1)" opacity="0.5"/>
-      <circle cx="18" cy="18" r="1.5" fill="url(#lg1)"/>
+      <!-- Rounded square background -->
+      <rect x="2" y="2" width="32" height="32" rx="9" fill="url(#lg2)" opacity="0.18"/>
+      <rect x="2" y="2" width="32" height="32" rx="9" fill="none" stroke="url(#lg1)" stroke-width="1.5" opacity="0.7"/>
+      <!-- Flowing upward growth wave -->
+      <path d="M7,26 Q11,24 13,20 Q15,16 18,15 Q21,14 23,11" stroke="url(#lg1)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <!-- Arrow head pointing up-right -->
+      <path d="M20,9 L23,11 L21,14" stroke="url(#lg1)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- AI spark dot -->
+      <circle cx="18" cy="15" r="2.2" fill="url(#lg1)" opacity="0.9"/>
+      <!-- Small pulse rings -->
+      <circle cx="18" cy="15" r="4.5" stroke="url(#lg1)" stroke-width="0.8" fill="none" opacity="0.35"/>
     </svg>"""
 
     st.markdown(f"""
@@ -1372,8 +1378,8 @@ def render_topbar():
         <a href="?tab=dashboard{s_param}" class="sa-logo-wrap" target="_self">
           {logo_svg}
           <div>
-            <div class="sa-logo-name">SocialAI</div>
-            <div class="sa-logo-tagline">SOCIAL INTELLIGENCE PLATFORM</div>
+            <div class="sa-logo-name">AdFlow AI</div>
+            <div class="sa-logo-tagline">AI-POWERED AD GROWTH PLATFORM</div>
           </div>
         </a>
         <div class="sa-header-right">
@@ -2839,7 +2845,7 @@ def render_admin():
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
           <span class="admin-badge">OWNER DASHBOARD</span>
         </div>
-        <div style="font-size:22px;font-weight:800;color:#E2E8F0;">SocialAI Control Centre</div>
+        <div style="font-size:22px;font-weight:800;color:#E2E8F0;">AdFlow AI Control Centre</div>
         <div style="font-size:13px;color:#64748B;">Full visibility of all subscribers, health, and platform performance.</div>
       </div>
     </div>
