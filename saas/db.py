@@ -26,14 +26,23 @@ def _ago(days: int) -> str:
 def get_conn():
     if USE_POSTGRES:
         import psycopg2, psycopg2.extras
-        # Parse URL manually so percent-encoded chars in passwords are decoded correctly
-        _u = urlparse(DATABASE_URL)
+        # Prefer explicit DB_* vars (avoids URL encoding issues with special chars in passwords).
+        # Fall back to parsing DATABASE_URL if individual vars aren't set.
+        db_host     = os.environ.get("DB_HOST")
+        db_port     = int(os.environ.get("DB_PORT", "5432"))
+        db_name     = os.environ.get("DB_NAME", "postgres")
+        db_user     = os.environ.get("DB_USER", "postgres")
+        db_password = os.environ.get("DB_PASSWORD")
+        if not db_host:
+            _u = urlparse(DATABASE_URL)
+            db_host     = _u.hostname
+            db_port     = _u.port or 5432
+            db_name     = (_u.path or "/postgres").lstrip("/")
+            db_user     = unquote(_u.username or "")
+            db_password = unquote(_u.password or "")
         conn = psycopg2.connect(
-            host=_u.hostname,
-            port=_u.port or 5432,
-            dbname=(_u.path or "/postgres").lstrip("/"),
-            user=unquote(_u.username or ""),
-            password=unquote(_u.password or ""),
+            host=db_host, port=db_port, dbname=db_name,
+            user=db_user, password=db_password,
             sslmode="require",
             cursor_factory=psycopg2.extras.RealDictCursor,
         )
