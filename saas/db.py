@@ -7,6 +7,7 @@ import os, json, uuid, bcrypt
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from contextlib import contextmanager
+from urllib.parse import urlparse, unquote
 
 # ── DB detection ───────────────────────────────────────────────────────────────
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
@@ -25,7 +26,17 @@ def _ago(days: int) -> str:
 def get_conn():
     if USE_POSTGRES:
         import psycopg2, psycopg2.extras
-        conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+        # Parse URL manually so percent-encoded chars in passwords are decoded correctly
+        _u = urlparse(DATABASE_URL)
+        conn = psycopg2.connect(
+            host=_u.hostname,
+            port=_u.port or 5432,
+            dbname=(_u.path or "/postgres").lstrip("/"),
+            user=unquote(_u.username or ""),
+            password=unquote(_u.password or ""),
+            sslmode="require",
+            cursor_factory=psycopg2.extras.RealDictCursor,
+        )
         conn.autocommit = False
         try:
             yield conn
