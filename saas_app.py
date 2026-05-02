@@ -132,8 +132,8 @@ section[data-testid="stMain"] .block-container { padding: 0 !important; }
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.sa-user-menu:hover .sa-dropdown,
 .sa-user-menu:focus-within .sa-dropdown { display: block; }
+.sa-dropdown.open { display: block !important; }
 .sa-dd-item {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 14px; border-radius: 10px;
@@ -1190,6 +1190,23 @@ def render_floating_agent():
   // Keep trying until elements are in DOM
   const bindTimer = setInterval(function(){{
     if (doc.querySelector('.lex-orb-wrap')) {{ attachLexEvents(); clearInterval(bindTimer); }}
+  }}, 100);
+
+  // Profile dropdown — click to open, click outside to close
+  const menuTimer = setInterval(function(){{
+    const menu = doc.querySelector('.sa-user-menu');
+    if (menu && !menu._ddBound) {{
+      menu._ddBound = true;
+      menu.addEventListener('click', function(e){{
+        e.stopPropagation();
+        const dd = menu.querySelector('.sa-dropdown');
+        if (dd) dd.classList.toggle('open');
+      }});
+      doc.addEventListener('click', function(){{
+        doc.querySelectorAll('.sa-dropdown.open').forEach(function(dd){{ dd.classList.remove('open'); }});
+      }});
+      clearInterval(menuTimer);
+    }}
   }}, 100);
 
   // Watch for tab changes and update context label
