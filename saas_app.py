@@ -900,6 +900,12 @@ def go_to(tab: str):
 
 def _do_login(user: dict):
     """Set session state and create persistent session token."""
+    # Promote to owner role if email matches OWNER_EMAIL
+    owner_email = os.environ.get("OWNER_EMAIL", "").lower().strip()
+    if owner_email and user.get("email", "").lower().strip() == owner_email:
+        if user.get("role") != "owner":
+            db._seed_owner()
+            user = db.get_user_by_email(user["email"]) or user
     token = db.create_session(user["id"])
     st.session_state.user = user
     st.session_state.session_token = token
