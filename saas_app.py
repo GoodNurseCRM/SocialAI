@@ -1791,7 +1791,7 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         auth_url = MetaAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=uid)
         lbl = "Connect Facebook + Instagram" if pid == "facebook" else "Connect via Facebook"
         st.markdown(
-            f'<a href="{auth_url}" target="_self" class="plat-oauth-btn"'
+            f'<a href="{auth_url}" target="_top" class="plat-oauth-btn"'
             f' style="background:#1877F2;">{pdef.icon} {lbl}</a>',
             unsafe_allow_html=True,
         )
@@ -1813,7 +1813,7 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         from saas.platforms.linkedin_api import LinkedInAPI
         auth_url = LinkedInAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=uid)
         st.markdown(
-            f'<a href="{auth_url}" target="_self" class="plat-oauth-btn"'
+            f'<a href="{auth_url}" target="_top" class="plat-oauth-btn"'
             f' style="background:#0A66C2;">💼 Connect LinkedIn</a>',
             unsafe_allow_html=True,
         )
@@ -1838,7 +1838,7 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         from saas.platforms.tiktok_api import TikTokAPI
         auth_url = TikTokAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=uid)
         st.markdown(
-            f'<a href="{auth_url}" target="_self" class="plat-oauth-btn"'
+            f'<a href="{auth_url}" target="_top" class="plat-oauth-btn"'
             f' style="background:#000;">🎵 Connect TikTok</a>',
             unsafe_allow_html=True,
         )
@@ -1862,7 +1862,7 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         st.session_state["twitter_pkce"] = verifier
         auth_url = TwitterAPI.get_auth_url(redirect_uri, pdef.oauth_scope, uid + ":twitter", challenge)
         st.markdown(
-            f'<a href="{auth_url}" target="_self" class="plat-oauth-btn"'
+            f'<a href="{auth_url}" target="_top" class="plat-oauth-btn"'
             f' style="background:#1DA1F2;">🐦 Connect Twitter / X</a>',
             unsafe_allow_html=True,
         )
