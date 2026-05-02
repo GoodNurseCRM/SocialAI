@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(not exist *)",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__computer",
+      "Bash(taskkill /F /IM streamlit.exe)",
+      "Bash(taskkill /F /IM python.exe /FI \"WINDOWTITLE eq *streamlit*\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr :8501)",
+      "Bash(taskkill /F /PID 24656)",
+      "PowerShell(Stop-Process -Id 24656 -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(netstat -ano)",
+      "PowerShell(Stop-Process -Id 17700 -Force -ErrorAction SilentlyContinue)",
+      "mcp__Claude_in_Chrome__read_console_messages",
+      "mcp__Claude_in_Chrome__javascript_tool",
+      "Bash(grep -E '\\\\.\\(py|json|txt|md\\)$')",
+      "Bash(pip install *)",
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import saas.db as db; demo = db.get_user_by_email\\('demo@socialai.app'\\); print\\(db.create_session\\(demo['id']\\)\\)\")",
+      "mcp__Claude_in_Chrome__tabs_create_mcp",
+      "PowerShell(py -3 -c \"import sys; print\\(sys.executable\\)\")",
+      "PowerShell(py -3 -m pip show streamlit 2>&1)"
+    ]
+  }
+}
