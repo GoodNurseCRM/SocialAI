@@ -1695,12 +1695,27 @@ def _handle_oauth_callback(uid, cb, code):
 def _process_meta_callback(uid, code):
     redirect_uri = f"{_base_url()}/?tab=platforms&oauth_callback=meta"
     from saas.platforms.meta import MetaAPI
-    tokens       = MetaAPI.exchange_code(code, redirect_uri)
+    try:
+        tokens = MetaAPI.exchange_code(code, redirect_uri)
+    except Exception as exc:
+        st.error(f"Token exchange failed: {exc}")
+        st.info(f"Redirect URI used: `{redirect_uri}` — make sure this is registered in your Meta app's Valid OAuth Redirect URIs.")
+        if st.button("← Back"):
+            st.query_params.clear(); st.query_params["tab"] = "platforms"; st.rerun()
+        return
     access_token = tokens["access_token"]
     api          = MetaAPI(access_token=access_token)
-    pages        = api.get_pages()
+    try:
+        pages = api.get_pages()
+    except Exception as exc:
+        st.error(f"Could not fetch Facebook Pages: {exc}")
+        st.info("Make sure you granted **Pages** permissions during the OAuth flow, and that your Meta app has `pages_show_list` enabled.")
+        if st.button("← Back"):
+            st.query_params.clear(); st.query_params["tab"] = "platforms"; st.rerun()
+        return
     if not pages:
-        st.error("No Facebook Pages found. Make sure you manage a Facebook Page, then try again.")
+        st.error("No Facebook Pages found. Make sure the account you connected manages a Facebook Page, then try again.")
+        st.info("Personal profiles don't work — you need a [Facebook Business Page](https://www.facebook.com/pages/create).")
         if st.button("← Back"):
             st.query_params.clear(); st.query_params["tab"] = "platforms"; st.rerun()
         return
@@ -1803,13 +1818,23 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
         app_sec = os.environ.get("META_APP_SECRET", "")
         if not app_id or not app_sec:
             if is_admin:
-                with st.expander("⚙️ Setup required"):
+                with st.expander("⚙️ Setup required — Meta (Facebook + Instagram)"):
                     _meta_uri = f"{_base_url()}/?tab=platforms&oauth_callback=meta"
-                    st.markdown(f"""**Enable Meta (Facebook + Instagram):**
-1. Go to [developers.facebook.com](https://developers.facebook.com) → Create App → Business
-2. Add **Facebook Login** + **Instagram Basic Display**
-3. Set redirect URI: `{_meta_uri}`
-4. Add `META_APP_ID` and `META_APP_SECRET` to `.env`""")
+                    st.markdown(f"""**Steps to enable Facebook + Instagram:**
+1. Go to [developers.facebook.com](https://developers.facebook.com) → **My Apps** → **Create App** → choose **Business**
+2. Add the **Facebook Login** product (under Add Products)
+3. In Facebook Login → **Settings**, add this exact Valid OAuth Redirect URI:
+   ```
+   {_meta_uri}
+   ```
+4. Copy your **App ID** and **App Secret** from App Settings → Basic
+5. Add to your `.env` file:
+   ```
+   META_APP_ID=your_app_id_here
+   META_APP_SECRET=your_app_secret_here
+   ```
+6. Restart the app, then click Connect below
+7. ⚠️ While in **Development mode**, only accounts listed as **Testers** or **Admins** in the app can connect""")
             else:
                 st.caption("Contact admin to enable this platform")
             return
@@ -1817,7 +1842,10 @@ def _render_platform_connect(uid, pid, pdef, is_admin):
             st.caption("Connects automatically with Facebook")
         redirect_uri = f"{_base_url()}/?tab=platforms&oauth_callback=meta"
         from saas.platforms.meta import MetaAPI
-        auth_url = MetaAPI.get_auth_url(redirect_uri, pdef.oauth_scope, state=state_tok)
+        # Always request the full Facebook+Instagram scope regardless of which tile
+        # was clicked — _process_meta_callback connects both platforms in one shot.
+        _meta_scope = PLATFORMS["facebook"].oauth_scope
+        auth_url = MetaAPI.get_auth_url(redirect_uri, _meta_scope, state=state_tok)
         lbl = "Connect Facebook + Instagram" if pid == "facebook" else "Connect via Facebook"
         _oauth_button(f"{pdef.icon} {lbl}", auth_url, "#1877F2")
 

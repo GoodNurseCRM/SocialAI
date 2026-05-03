@@ -11,7 +11,7 @@ from urllib.parse import urlparse, unquote
 
 # ── DB detection ───────────────────────────────────────────────────────────────
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
-USE_POSTGRES  = bool(DATABASE_URL)
+USE_POSTGRES  = bool(DATABASE_URL) or bool(os.environ.get("DB_HOST"))
 DB_PATH       = os.environ.get("DB_PATH", "./saas_data.db")
 PH            = "%s" if USE_POSTGRES else "?"   # SQL placeholder
 
