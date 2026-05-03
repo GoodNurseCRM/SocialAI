@@ -486,7 +486,7 @@ CREATE INDEX IF NOT EXISTS idx_biz_profile_user  ON business_profiles(user_id);
 """
 
 def init_db():
-    with get_conn() as conn:
+    with get_conn() as conn:  # noqa: SIM117
         if USE_POSTGRES:
             cur = conn.cursor()
             for stmt in (s.strip() for s in PG_SCHEMA.split(";") if s.strip()):
@@ -551,7 +551,17 @@ def _seed_model_configs():
             )
 
 
-init_db()
+try:
+    init_db()
+except Exception as _db_init_err:
+    import sys
+    print(f"DATABASE CONNECTION ERROR: {_db_init_err}", file=sys.stderr)
+    raise RuntimeError(
+        f"Cannot connect to database.\n\nError: {_db_init_err}\n\n"
+        f"Check: 1) Supabase project is not paused  "
+        f"2) DB_HOST/DATABASE_URL secrets are correct  "
+        f"3) No IP restrictions blocking Streamlit Cloud"
+    ) from _db_init_err
 
 # ── Users ──────────────────────────────────────────────────────────────────────
 
