@@ -125,7 +125,7 @@ PLATFORMS: dict[str, PlatformDef] = {
         icon="📘",
         color="#1877F2",
         auth_type="oauth2",
-        oauth_scope="public_profile,email,pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_engagement",
+        oauth_scope="public_profile",
         features=["post", "image_post", "schedule", "analytics", "comment", "reply"],
         api_docs="https://developers.facebook.com/docs/graph-api",
     ),
