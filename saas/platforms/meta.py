@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 
 FB_APP_ID     = os.environ.get("META_APP_ID", "")
 FB_APP_SECRET = os.environ.get("META_APP_SECRET", "")
-FB_API_VER    = "v19.0"
+FB_API_VER    = "v22.0"
 FB_BASE       = f"https://graph.facebook.com/{FB_API_VER}"
 
 class MetaAPI:
@@ -34,6 +34,17 @@ class MetaAPI:
     @staticmethod
     def exchange_code(code: str, redirect_uri: str) -> dict:
         """Exchange auth code for short-lived token, then extend it."""
+        def _fb_raise(resp):
+            """Raise with the Facebook error message if one is present."""
+            try:
+                body = resp.json()
+                err  = body.get("error") or {}
+                if err:
+                    raise ValueError(f"Facebook error {err.get('code')}: {err.get('message')}")
+            except (AttributeError, KeyError, requests.exceptions.JSONDecodeError):
+                pass
+            resp.raise_for_status()
+
         # Step 1: get short-lived token
         r = requests.get(f"{FB_BASE}/oauth/access_token", params={
             "client_id":     FB_APP_ID,
@@ -41,8 +52,10 @@ class MetaAPI:
             "redirect_uri":  redirect_uri,
             "code":          code,
         })
-        r.raise_for_status()
+        _fb_raise(r)
         short_token = r.json().get("access_token")
+        if not short_token:
+            raise ValueError(f"No access_token in response: {r.json()}")
 
         # Step 2: extend to long-lived (60-day) token
         r2 = requests.get(f"{FB_BASE}/oauth/access_token", params={
@@ -51,7 +64,7 @@ class MetaAPI:
             "client_secret":     FB_APP_SECRET,
             "fb_exchange_token": short_token,
         })
-        r2.raise_for_status()
+        _fb_raise(r2)
         return r2.json()   # {"access_token": "...", "token_type": "bearer", "expires_in": ...}
 
     def get_pages(self) -> list:
