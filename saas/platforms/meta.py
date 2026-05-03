@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 
 FB_APP_ID     = os.environ.get("META_APP_ID", "")
 FB_APP_SECRET = os.environ.get("META_APP_SECRET", "")
+FB_LOGIN_CONFIG_ID = os.environ.get("META_LOGIN_CONFIG_ID", "") or os.environ.get("META_CONFIG_ID", "")
 FB_API_VER    = "v22.0"
 FB_BASE       = f"https://graph.facebook.com/{FB_API_VER}"
 REQUEST_TIMEOUT = 30
@@ -56,11 +57,15 @@ class MetaAPI:
         params = {
             "client_id":     FB_APP_ID,
             "redirect_uri":  redirect_uri,
-            "scope":         scope,
             "response_type": "code",
             "state":         state,
         }
-        return f"https://www.facebook.com/dialog/oauth?{urlencode(params)}"
+        if FB_LOGIN_CONFIG_ID:
+            params["config_id"] = FB_LOGIN_CONFIG_ID
+            params["override_default_response_type"] = "true"
+        else:
+            params["scope"] = scope
+        return f"https://www.facebook.com/{FB_API_VER}/dialog/oauth?{urlencode(params)}"
 
     @staticmethod
     def exchange_code(code: str, redirect_uri: str) -> dict:
