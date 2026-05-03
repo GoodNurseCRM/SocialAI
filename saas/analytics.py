@@ -20,7 +20,8 @@ def _refresh_platform(user_id: str, conn: dict):
 
     if platform == "facebook":
         from saas.platforms.meta import MetaAPI
-        api = MetaAPI(access_token=conn["access_token"], page_id=conn["page_id"])
+        page_token = extra.get("page_token") or conn["access_token"]
+        api = MetaAPI(access_token=page_token, page_id=conn["page_id"])
         _refresh_facebook_posts(user_id, api)
 
     elif platform == "instagram":

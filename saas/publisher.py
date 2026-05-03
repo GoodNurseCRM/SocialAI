@@ -39,7 +39,8 @@ def publish_post(post: dict) -> tuple[bool, str]:
 # ── Platform Publishers ────────────────────────────────────────────────────────
 def _publish_facebook(post, conn, extra) -> tuple[bool, str]:
     from saas.platforms.meta import MetaAPI
-    api = MetaAPI(access_token=conn["access_token"], page_id=conn["page_id"])
+    page_token = extra.get("page_token") or conn["access_token"]
+    api = MetaAPI(access_token=page_token, page_id=conn["page_id"])
     result = api.post_facebook(
         message=post["content"],
         image_url=post.get("image_url"),

@@ -1,6 +1,6 @@
 """
 AdFlow AI — Multi-tenant SaaS Marketing Agent
-Entry point: streamlit run saas_app.py --server.port 8502
+Entry point: streamlit run saas_app.py
 """
 import streamlit as st
 import os, json, uuid, base64
@@ -19,8 +19,22 @@ import saas.db as db
 from saas.config import TIERS, PLATFORMS
 
 def _base_url() -> str:
-    """Return the app base URL — production or localhost."""
-    return os.environ.get("APP_BASE_URL", "http://localhost:8502").rstrip("/")
+    """Return the public app URL for OAuth and billing callbacks."""
+    configured = os.environ.get("APP_BASE_URL", "").strip().rstrip("/")
+
+    try:
+        current_url = (getattr(st.context, "url", "") or "").rstrip("/")
+    except Exception:
+        current_url = ""
+
+    def _is_local(url: str) -> bool:
+        return url.startswith(("http://localhost", "http://127.0.0.1", "http://0.0.0.0"))
+
+    if configured and not (_is_local(configured) and current_url and not _is_local(current_url)):
+        return configured
+    if current_url:
+        return current_url
+    return "http://localhost:8502"
 
 def _oauth_button(label: str, url: str, bg: str) -> None:
     """Render an OAuth button that opens the auth URL in a new tab.
@@ -1704,6 +1718,9 @@ def _process_meta_callback(uid, code):
             st.query_params.clear(); st.query_params["tab"] = "platforms"; st.rerun()
         return
     access_token = tokens["access_token"]
+    token_expiry = None
+    if tokens.get("expires_in"):
+        token_expiry = (datetime.now(timezone.utc) + timedelta(seconds=int(tokens["expires_in"]))).isoformat()
     api          = MetaAPI(access_token=access_token)
     try:
         pages = api.get_pages()
@@ -1720,30 +1737,46 @@ def _process_meta_callback(uid, code):
             st.query_params.clear(); st.query_params["tab"] = "platforms"; st.rerun()
         return
     page        = pages[0]
-    page_token  = page["access_token"]
-    ig          = api.get_instagram_account(page["id"], page_token)
-    extra       = {"pages": pages, "page_token": page_token}
+    page_token  = page.get("access_token")
+    if not page_token:
+        st.error("Meta connected your account, but did not return a Facebook Page access token.")
+        st.info("Reconnect and approve `pages_show_list`, `pages_read_engagement`, and `pages_manage_posts`. The account must have permission to create content for the Page.")
+        if st.button("â† Back"):
+            st.query_params.clear(); st.query_params["tab"] = "platforms"; st.rerun()
+        return
+    ig          = None
+    ig_error    = None
+    try:
+        ig = api.get_instagram_account(page["id"], page_token)
+    except Exception as exc:
+        ig_error = exc
+    extra       = {"pages": pages, "page_token": page_token, "user_token": access_token}
     if ig:
         extra["ig_user_id"]  = ig["id"]
         extra["ig_username"] = ig.get("username")
     db.upsert_platform_connection(
         uid, "facebook",
-        access_token=access_token, page_id=page["id"],
+        access_token=page_token, token_expiry=token_expiry, page_id=page["id"],
         page_name=page["name"], username=page["name"],
         extra_data=json.dumps(extra),
     )
     if ig:
         db.upsert_platform_connection(
             uid, "instagram",
-            access_token=access_token,
+            access_token=page_token,
+            token_expiry=token_expiry,
             page_id=ig["id"], page_name=ig.get("username"),
             username=ig.get("username"),
             extra_data=json.dumps({**extra, "page_id": page["id"]}),
         )
     st.query_params.clear(); st.query_params["tab"] = "platforms"
+    if st.session_state.get("session_token"):
+        st.query_params["s"] = st.session_state.session_token
     msg = f"✅ Facebook connected as **{page['name']}**"
     if ig:
         msg += f"  \n✅ Instagram connected as **@{ig.get('username','')}**"
+    if ig_error and not ig:
+        st.warning(f"Facebook connected, but Instagram lookup failed: {ig_error}")
     st.success(msg)
     st.rerun()
 
@@ -2430,7 +2463,7 @@ def render_settings():
             if st.button("Manage Billing (Stripe Portal)"):
                 try:
                     from saas.billing import create_portal_session
-                    url = create_portal_session(uid)
+                    url = create_portal_session(uid, return_url=f"{_base_url()}/?tab=settings")
                     st.markdown(f'<a href="{url}" target="_blank">Open Billing Portal →</a>', unsafe_allow_html=True)
                 except Exception as e:
                     st.error(f"Could not open portal: {e}")
@@ -2499,6 +2532,8 @@ def render_settings():
                             checkout_url = create_checkout_session(
                                 uid, user["email"], user["name"], tid,
                                 "yearly" if yearly else "monthly",
+                                success_url=f"{_base_url()}/?checkout=success",
+                                cancel_url=f"{_base_url()}/?checkout=cancel",
                             )
                             st.markdown(f'<a href="{checkout_url}" target="_blank">**Continue to payment →**</a>', unsafe_allow_html=True)
                         except Exception as e:

@@ -10,6 +10,37 @@ FB_APP_ID     = os.environ.get("META_APP_ID", "")
 FB_APP_SECRET = os.environ.get("META_APP_SECRET", "")
 FB_API_VER    = "v22.0"
 FB_BASE       = f"https://graph.facebook.com/{FB_API_VER}"
+REQUEST_TIMEOUT = 30
+
+
+def _raise_for_graph_error(resp: requests.Response) -> None:
+    """Raise the actual Meta error instead of a generic HTTPError."""
+    try:
+        body = resp.json()
+    except ValueError:
+        body = None
+
+    if isinstance(body, dict) and body.get("error"):
+        err = body["error"]
+        bits = []
+        if err.get("code") is not None:
+            bits.append(str(err["code"]))
+        if err.get("error_subcode") is not None:
+            bits.append(str(err["error_subcode"]))
+        prefix = f"Meta Graph API error {'/'.join(bits)}" if bits else "Meta Graph API error"
+        raise ValueError(f"{prefix}: {err.get('message', err)}")
+
+    if not resp.ok:
+        detail = body if body is not None else resp.text[:500]
+        raise ValueError(f"Meta Graph API HTTP {resp.status_code}: {detail}")
+
+    resp.raise_for_status()
+
+
+def _request_json(method: str, url: str, **kwargs) -> dict:
+    resp = requests.request(method, url, timeout=REQUEST_TIMEOUT, **kwargs)
+    _raise_for_graph_error(resp)
+    return resp.json()
 
 class MetaAPI:
     """Facebook + Instagram via Meta Graph API."""
@@ -34,56 +65,41 @@ class MetaAPI:
     @staticmethod
     def exchange_code(code: str, redirect_uri: str) -> dict:
         """Exchange auth code for short-lived token, then extend it."""
-        def _fb_raise(resp):
-            """Raise with the Facebook error message if one is present."""
-            try:
-                body = resp.json()
-                err  = body.get("error") or {}
-                if err:
-                    raise ValueError(f"Facebook error {err.get('code')}: {err.get('message')}")
-            except (AttributeError, KeyError, requests.exceptions.JSONDecodeError):
-                pass
-            resp.raise_for_status()
-
         # Step 1: get short-lived token
-        r = requests.get(f"{FB_BASE}/oauth/access_token", params={
+        data = _request_json("GET", f"{FB_BASE}/oauth/access_token", params={
             "client_id":     FB_APP_ID,
             "client_secret": FB_APP_SECRET,
             "redirect_uri":  redirect_uri,
             "code":          code,
         })
-        _fb_raise(r)
-        short_token = r.json().get("access_token")
+        short_token = data.get("access_token")
         if not short_token:
-            raise ValueError(f"No access_token in response: {r.json()}")
+            raise ValueError(f"No access_token in response: {data}")
 
         # Step 2: extend to long-lived (60-day) token
-        r2 = requests.get(f"{FB_BASE}/oauth/access_token", params={
+        return _request_json("GET", f"{FB_BASE}/oauth/access_token", params={
             "grant_type":        "fb_exchange_token",
             "client_id":         FB_APP_ID,
             "client_secret":     FB_APP_SECRET,
             "fb_exchange_token": short_token,
         })
-        _fb_raise(r2)
-        return r2.json()   # {"access_token": "...", "token_type": "bearer", "expires_in": ...}
+        # {"access_token": "...", "token_type": "bearer", "expires_in": ...}
 
     def get_pages(self) -> list:
         """Return list of Facebook Pages the user manages."""
-        r = requests.get(f"{FB_BASE}/me/accounts", params={
+        data = _request_json("GET", f"{FB_BASE}/me/accounts", params={
             "access_token": self.access_token,
-            "fields":       "id,name,access_token,category,picture",
+            "fields":       "id,name,access_token,category,picture,tasks",
         })
-        r.raise_for_status()
-        return r.json().get("data", [])
+        return data.get("data", [])
 
     def get_instagram_account(self, page_id: str, page_token: str) -> Optional[dict]:
         """Return the Instagram Business account linked to a Facebook Page."""
-        r = requests.get(f"{FB_BASE}/{page_id}", params={
+        data = _request_json("GET", f"{FB_BASE}/{page_id}", params={
             "access_token": page_token,
             "fields":       "instagram_business_account{id,username,profile_picture_url,followers_count}",
         })
-        r.raise_for_status()
-        return r.json().get("instagram_business_account")
+        return data.get("instagram_business_account")
 
     # ── Facebook Posts ─────────────────────────────────────────────────────────
     def post_facebook(self, message: str, image_url: str = None,
@@ -104,44 +120,39 @@ class MetaAPI:
             payload["scheduled_publish_time"] = scheduled_time
             payload["published"] = False
 
-        r = requests.post(endpoint, data=payload)
-        r.raise_for_status()
-        return r.json()   # {"id": "page_id_post_id"}
+        return _request_json("POST", endpoint, data=payload)   # {"id": "page_id_post_id"}
 
     def get_facebook_posts(self, limit: int = 10) -> list:
         """Return recent posts from the Page."""
-        r = requests.get(f"{FB_BASE}/{self.page_id}/posts", params={
+        data = _request_json("GET", f"{FB_BASE}/{self.page_id}/posts", params={
             "access_token": self.access_token,
             "fields":       "id,message,story,created_time,full_picture,likes.summary(true),comments.summary(true),shares",
             "limit":        limit,
         })
-        r.raise_for_status()
-        return r.json().get("data", [])
+        return data.get("data", [])
 
     def get_facebook_post_insights(self, post_id: str) -> dict:
         """Return engagement metrics for a specific post."""
         metrics = "post_impressions,post_reach,post_engaged_users,post_reactions_like_total"
-        r = requests.get(f"{FB_BASE}/{post_id}/insights", params={
+        data = _request_json("GET", f"{FB_BASE}/{post_id}/insights", params={
             "access_token": self.access_token,
             "metric":       metrics,
         })
-        r.raise_for_status()
         data = {item["name"]: item["values"][0]["value"]
-                for item in r.json().get("data", []) if item.get("values")}
+                for item in data.get("data", []) if item.get("values")}
         return data
 
     def get_page_insights(self, days: int = 28) -> dict:
         """Return aggregate Page metrics."""
         metrics = "page_fans,page_impressions,page_reach,page_views_total,page_post_engagements"
-        r = requests.get(f"{FB_BASE}/{self.page_id}/insights", params={
+        data = _request_json("GET", f"{FB_BASE}/{self.page_id}/insights", params={
             "access_token": self.access_token,
             "metric":       metrics,
             "period":       "day",
             "since":        f"-{days}days",
         })
-        r.raise_for_status()
         return {item["name"]: sum(v["value"] for v in item.get("values", []))
-                for item in r.json().get("data", [])}
+                for item in data.get("data", [])}
 
     # ── Instagram Posts ────────────────────────────────────────────────────────
     def post_instagram(self, ig_user_id: str, page_token: str,
@@ -158,39 +169,35 @@ class MetaAPI:
         else:
             raise ValueError("Instagram requires image_url or video_url")
 
-        r1 = requests.post(f"{FB_BASE}/{ig_user_id}/media", data=container_params)
-        r1.raise_for_status()
-        container_id = r1.json()["id"]
+        data = _request_json("POST", f"{FB_BASE}/{ig_user_id}/media", data=container_params)
+        container_id = data["id"]
 
         # Step 2: publish the container
-        r2 = requests.post(f"{FB_BASE}/{ig_user_id}/media_publish", data={
+        return _request_json("POST", f"{FB_BASE}/{ig_user_id}/media_publish", data={
             "creation_id":  container_id,
             "access_token": page_token,
         })
-        r2.raise_for_status()
-        return r2.json()   # {"id": "media_id"}
+        # {"id": "media_id"}
 
     def get_instagram_insights(self, ig_user_id: str, page_token: str,
                                 days: int = 30) -> dict:
         """Return Instagram account-level metrics."""
         metrics = "follower_count,reach,impressions,profile_views"
-        r = requests.get(f"{FB_BASE}/{ig_user_id}/insights", params={
+        data = _request_json("GET", f"{FB_BASE}/{ig_user_id}/insights", params={
             "access_token": page_token,
             "metric":       metrics,
             "period":       "day",
             "since":        f"-{days}days",
         })
-        r.raise_for_status()
         return {item["name"]: sum(v["value"] for v in item.get("values", []))
-                for item in r.json().get("data", [])}
+                for item in data.get("data", [])}
 
     def get_instagram_media_insights(self, media_id: str, page_token: str) -> dict:
         """Return engagement metrics for a specific Instagram post."""
         metrics = "impressions,reach,likes,comments,shares,saved"
-        r = requests.get(f"{FB_BASE}/{media_id}/insights", params={
+        data = _request_json("GET", f"{FB_BASE}/{media_id}/insights", params={
             "access_token": page_token,
             "metric":       metrics,
         })
-        r.raise_for_status()
         return {item["name"]: item.get("values", [{}])[0].get("value", 0)
-                for item in r.json().get("data", [])}
+                for item in data.get("data", [])}

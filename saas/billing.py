@@ -9,6 +9,13 @@ import saas.db as db
 
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
 
+
+def _app_base_url() -> str:
+    base_url = os.environ.get("APP_BASE_URL", "").strip().rstrip("/")
+    if not base_url:
+        raise ValueError("APP_BASE_URL is required when no callback URL is provided.")
+    return base_url
+
 # ── Stripe Customers ───────────────────────────────────────────────────────────
 def get_or_create_customer(user_id: str, email: str, name: str) -> str:
     """Return existing Stripe customer ID or create a new one."""
@@ -23,9 +30,14 @@ def get_or_create_customer(user_id: str, email: str, name: str) -> str:
 # ── Checkout ───────────────────────────────────────────────────────────────────
 def create_checkout_session(user_id: str, email: str, name: str,
                              tier_id: str, billing: str = "monthly",
-                             success_url: str = "http://localhost:8502/?checkout=success",
-                             cancel_url: str  = "http://localhost:8502/?checkout=cancel") -> str:
+                             success_url: str = None,
+                             cancel_url: str = None) -> str:
     """Create a Stripe Checkout session and return the URL."""
+    if not success_url or not cancel_url:
+        base_url = _app_base_url()
+        success_url = success_url or f"{base_url}/?checkout=success"
+        cancel_url = cancel_url or f"{base_url}/?checkout=cancel"
+
     tier = TIERS.get(tier_id)
     if not tier or tier.id == "free":
         raise ValueError(f"Invalid tier: {tier_id}")
@@ -50,8 +62,9 @@ def create_checkout_session(user_id: str, email: str, name: str,
 
 # ── Customer Portal ────────────────────────────────────────────────────────────
 def create_portal_session(user_id: str,
-                           return_url: str = "http://localhost:8502/") -> str:
+                           return_url: str = None) -> str:
     """Return Stripe Customer Portal URL for managing subscriptions."""
+    return_url = return_url or _app_base_url()
     sub = db.get_subscription(user_id)
     if not sub.get("stripe_customer_id"):
         raise ValueError("No Stripe customer found.")
